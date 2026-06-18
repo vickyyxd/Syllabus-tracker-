@@ -1,153 +1,194 @@
-from flask import Flask, render_template, jsonify, request
-from flask_cors import CORS
-import json
-import os
-from datetime import datetime, date
+# 📅 Daily Productivity Planner
 
-app = Flask(__name__)
-CORS(app)
+A modern Flask-based Productivity Planner that helps users manage daily tasks, track progress, monitor productivity, and organize schedules efficiently. The application includes task management, completion tracking, category organization, statistics, and customizable wallpapers.
 
-DATA_FILE = "data.json"
+## ✨ Features
 
-DEFAULT_DATA = {
-    "tasks": [
-        {"id": 1, "category": "Study", "title": "Mathematics", "start": "08:00", "end": "10:00", "color": "#6366f1", "done_dates": [], "archived": False},
-        {"id": 2, "category": "Gym", "title": "Workout Session", "start": "06:00", "end": "07:30", "color": "#f43f5e", "done_dates": [], "archived": False},
-        {"id": 3, "category": "Art of Living", "title": "Volunteer Work", "start": "17:00", "end": "19:00", "color": "#10b981", "done_dates": [], "archived": False},
-        {"id": 4, "category": "Coding", "title": "DSA Practice", "start": "20:00", "end": "22:00", "color": "#f59e0b", "done_dates": [], "archived": False},
-        {"id": 5, "category": "IIT Madras", "title": "BS Data Science Lecture", "start": "14:00", "end": "16:00", "color": "#8b5cf6", "done_dates": [], "archived": False},
-        {"id": 6, "category": "Coding", "title": "Python Programming", "start": "10:30", "end": "12:00", "color": "#06b6d4", "done_dates": [], "archived": False},
-        {"id": 7, "category": "Study", "title": "Physics Revision", "start": "16:00", "end": "17:00", "color": "#ec4899", "done_dates": [], "archived": False},
-    ],
-    "wallpaper": "gradient_1",
-    "custom_wallpaper": None,
-    "next_id": 8
-}
+* ✅ Create, edit, and delete tasks
+* 📂 Organize tasks by categories
+* 🎯 Mark tasks as completed for specific dates
+* 📊 Productivity statistics dashboard
+* 🔥 Track completion streaks
+* 🎨 Customizable wallpapers
 
-CATEGORIES = ["Study", "Gym", "Art of Living", "Coding", "IIT Madras", "Other"]
-CATEGORY_COLORS = {
-    "Study": "#6366f1",
-    "Gym": "#f43f5e",
-    "Art of Living": "#10b981",
-    "Coding": "#f59e0b",
-    "IIT Madras": "#8b5cf6",
-    "Other": "#64748b"
-}
+## 🛠️ Technologies Used
 
-def load_data():
-    if os.path.exists(DATA_FILE):
-        with open(DATA_FILE, "r") as f:
-            return json.load(f)
-    return DEFAULT_DATA.copy()
+### Backend
 
-def save_data(data):
-    with open(DATA_FILE, "w") as f:
-        json.dump(data, f, indent=2)
+* Python
+* Flask
+* Flask-CORS
 
-@app.route("/")
-def index():
-    return render_template("index.html")
+### Database
 
-@app.route("/api/tasks", methods=["GET"])
-def get_tasks():
-    data = load_data()
-    today = str(date.today())
-    tasks = [t for t in data["tasks"] if not t.get("archived", False)]
-    return jsonify({"tasks": tasks, "today": today})
+* JSON File Storage (`data.json`)
 
-@app.route("/api/tasks", methods=["POST"])
-def add_task():
-    data = load_data()
-    body = request.json
-    new_task = {
-        "id": data.get("next_id", 100),
-        "category": body.get("category", "Other"),
-        "title": body.get("title", "New Task"),
-        "start": body.get("start", "09:00"),
-        "end": body.get("end", "10:00"),
-        "color": body.get("color", CATEGORY_COLORS.get(body.get("category", "Other"), "#64748b")),
-        "done_dates": [],
-        "archived": False
-    }
-    data["tasks"].append(new_task)
-    data["next_id"] = data.get("next_id", 100) + 1
-    save_data(data)
-    return jsonify({"task": new_task, "today": str(date.today())})
+### Data Handling
 
-@app.route("/api/tasks/<int:task_id>", methods=["PUT"])
-def update_task(task_id):
-    data = load_data()
-    body = request.json
-    for t in data["tasks"]:
-        if t["id"] == task_id:
-            t["title"] = body.get("title", t["title"])
-            t["category"] = body.get("category", t["category"])
-            t["start"] = body.get("start", t["start"])
-            t["end"] = body.get("end", t["end"])
-            t["color"] = body.get("color", t["color"])
-            save_data(data)
-            return jsonify({"task": t, "today": str(date.today())})
-    return jsonify({"error": "Not found"}), 404
+* JSON
 
-@app.route("/api/tasks/<int:task_id>", methods=["DELETE"])
-def delete_task(task_id):
-    data = load_data()
-    data["tasks"] = [t for t in data["tasks"] if t["id"] != task_id]
-    save_data(data)
-    return jsonify({"success": True})
+## 📁 Project Structure
 
-@app.route("/api/tasks/<int:task_id>/toggle", methods=["POST"])
-def toggle_task(task_id):
-    data = load_data()
-    today = str(date.today())
-    body = request.json or {}
-    target_date = body.get("date", today)
-    for t in data["tasks"]:
-        if t["id"] == task_id:
-            if target_date in t["done_dates"]:
-                t["done_dates"].remove(target_date)
-                done = False
-            else:
-                t["done_dates"].append(target_date)
-                done = True
-            save_data(data)
-            return jsonify({"done": done, "task": t})
-    return jsonify({"error": "Not found"}), 404
+```
+project/
+│
+├── app.py
+├── data.json
+├── templates/
+│   └── index.html
+│
+├── static/
+│   ├── css/
+│   ├── js/
+│   └── images/
+│
+└── README.md
+```
 
-@app.route("/api/stats", methods=["GET"])
-def get_stats():
-    data = load_data()
-    today = str(date.today())
-    tasks = [t for t in data["tasks"] if not t.get("archived", False)]
-    total = len(tasks)
-    done_today = sum(1 for t in tasks if today in t.get("done_dates", []))
-    streak = 0
-    for t in tasks:
-        if t.get("done_dates"):
-            streak = max(streak, len(t["done_dates"]))
-    cats = {}
-    for t in tasks:
-        c = t["category"]
-        cats[c] = cats.get(c, 0) + 1
-    return jsonify({"total": total, "done_today": done_today, "streak": streak, "categories": cats})
+## 📌 Categories
 
-@app.route("/api/wallpaper", methods=["GET"])
-def get_wallpaper():
-    data = load_data()
-    return jsonify({"wallpaper": data.get("wallpaper", "gradient_1"), "custom": data.get("custom_wallpaper")})
+The planner includes predefined categories:
 
-@app.route("/api/wallpaper", methods=["POST"])
-def set_wallpaper():
-    data = load_data()
-    body = request.json
-    data["wallpaper"] = body.get("wallpaper", "gradient_1")
-    data["custom_wallpaper"] = body.get("custom_wallpaper", None)
-    save_data(data)
-    return jsonify({"success": True})
+* Study
+* Gym
+* Art of Living
+* Coding
+* IIT Madras
+* Other
 
-@app.route("/api/categories", methods=["GET"])
-def get_categories():
-    return jsonify({"categories": CATEGORIES, "colors": CATEGORY_COLORS})
+Each category has its own color theme for better visualization.
 
-if __name__ == "__main__":
-    app.run(debug=True, port=5050)
+## 🚀 Installation
+
+### 1. Clone Repository
+
+```bash
+git clone https://github.com/yourusername/daily-productivity-planner.git
+cd daily-productivity-planner
+```
+
+### 2. Create Virtual Environment
+
+```bash
+python -m venv venv
+```
+
+### 3. Activate Environment
+
+Windows:
+
+```bash
+venv\Scripts\activate
+```
+
+Mac/Linux:
+
+```bash
+source venv/bin/activate
+```
+
+### 4. Install Dependencies
+
+```bash
+pip install flask flask-cors
+```
+
+### 5. Run Application
+
+```bash
+python app.py
+```
+
+The application will start at:
+
+```text
+http://localhost:5050
+```
+
+## 📡 API Endpoints
+
+### Tasks
+
+| Method | Endpoint                 | Description            |
+| ------ | ------------------------ | ---------------------- |
+| GET    | `/api/tasks`             | Get all active tasks   |
+| POST   | `/api/tasks`             | Create a new task      |
+| PUT    | `/api/tasks/<id>`        | Update a task          |
+| DELETE | `/api/tasks/<id>`        | Delete a task          |
+| POST   | `/api/tasks/<id>/toggle` | Toggle task completion |
+
+### Statistics
+
+| Method | Endpoint     |
+| ------ | ------------ |
+| GET    | `/api/stats` |
+
+Returns:
+
+* Total Tasks
+* Completed Today
+* Streak
+* Category Distribution
+
+### Wallpaper
+
+| Method | Endpoint         |
+| ------ | ---------------- |
+| GET    | `/api/wallpaper` |
+| POST   | `/api/wallpaper` |
+
+### Categories
+
+| Method | Endpoint          |
+| ------ | ----------------- |
+| GET    | `/api/categories` |
+
+## 📊 Productivity Tracking
+
+The application tracks:
+
+* Daily completed tasks
+* Category-wise productivity
+* Current productivity streak
+* Total active tasks
+
+## 🎨 Customization
+
+Users can:
+
+* Change wallpapers
+* Use custom wallpapers
+* Assign custom colors to tasks
+* Create personalized schedules
+
+## 🔮 Future Improvements
+
+* User Authentication
+* Cloud Database Support
+* Dark Mode
+* Notifications & Reminders
+* Weekly & Monthly Analytics
+* Mobile App Version
+* Calendar View
+* Export Data Feature
+
+## 🤝 Contributing
+
+Contributions, issues, and feature requests are welcome.
+
+1. Fork the repository
+2. Create a feature branch
+3. Commit your changes
+4. Push to your branch
+5. Open a Pull Request
+
+## 📜 License
+
+This project is open-source and available under the MIT License.
+
+## 👨‍💻 Author
+
+**Vicky Kumar**
+
+Built to help students, coders, gym enthusiasts, and productivity lovers manage their daily routines efficiently.
+
