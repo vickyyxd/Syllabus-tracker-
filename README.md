@@ -1,272 +1,153 @@
-<!DOCTYPE html>
-<html lang="en">
+from flask import Flask, render_template, jsonify, request
+from flask_cors import CORS
+import json
+import os
+from datetime import datetime, date
 
-<head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Syllabus Tracker</title>
-<style>
-  @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap');
+app = Flask(__name__)
+CORS(app)
 
-  body {
-    font-family: 'Poppins', Arial, sans-serif;
-    padding: 30px 15px;
-    background: linear-gradient(135deg, #667eea, #764ba2);
-    color: #fff;
-    min-height: 100vh;
-  }
+DATA_FILE = "data.json"
 
-  h1 {
-    text-align: center;
-    font-weight: 600;
-    margin-bottom: 40px;
-    text-shadow: 0 2px 5px rgba(0,0,0,0.3);
-  }
+DEFAULT_DATA = {
+    "tasks": [
+        {"id": 1, "category": "Study", "title": "Mathematics", "start": "08:00", "end": "10:00", "color": "#6366f1", "done_dates": [], "archived": False},
+        {"id": 2, "category": "Gym", "title": "Workout Session", "start": "06:00", "end": "07:30", "color": "#f43f5e", "done_dates": [], "archived": False},
+        {"id": 3, "category": "Art of Living", "title": "Volunteer Work", "start": "17:00", "end": "19:00", "color": "#10b981", "done_dates": [], "archived": False},
+        {"id": 4, "category": "Coding", "title": "DSA Practice", "start": "20:00", "end": "22:00", "color": "#f59e0b", "done_dates": [], "archived": False},
+        {"id": 5, "category": "IIT Madras", "title": "BS Data Science Lecture", "start": "14:00", "end": "16:00", "color": "#8b5cf6", "done_dates": [], "archived": False},
+        {"id": 6, "category": "Coding", "title": "Python Programming", "start": "10:30", "end": "12:00", "color": "#06b6d4", "done_dates": [], "archived": False},
+        {"id": 7, "category": "Study", "title": "Physics Revision", "start": "16:00", "end": "17:00", "color": "#ec4899", "done_dates": [], "archived": False},
+    ],
+    "wallpaper": "gradient_1",
+    "custom_wallpaper": None,
+    "next_id": 8
+}
 
-  .subject {
-    background: rgba(255, 255, 255, 0.1);
-    padding: 25px 30px;
-    margin-bottom: 25px;
-    border-radius: 15px;
-    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
-    transition: background 0.3s ease, box-shadow 0.3s ease;
-  }
+CATEGORIES = ["Study", "Gym", "Art of Living", "Coding", "IIT Madras", "Other"]
+CATEGORY_COLORS = {
+    "Study": "#6366f1",
+    "Gym": "#f43f5e",
+    "Art of Living": "#10b981",
+    "Coding": "#f59e0b",
+    "IIT Madras": "#8b5cf6",
+    "Other": "#64748b"
+}
 
-  .subject:hover {
-    background: rgba(255, 255, 255, 0.15);
-    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.3);
-  }
+def load_data():
+    if os.path.exists(DATA_FILE):
+        with open(DATA_FILE, "r") as f:
+            return json.load(f)
+    return DEFAULT_DATA.copy()
 
-  .subject h2 {
-    font-weight: 600;
-    margin-bottom: 18px;
-    letter-spacing: 1px;
-  }
+def save_data(data):
+    with open(DATA_FILE, "w") as f:
+        json.dump(data, f, indent=2)
 
-  .unit {
-    margin: 12px 0;
-    display: flex;
-    align-items: center;
-    cursor: pointer;
-    user-select: none;
-  }
+@app.route("/")
+def index():
+    return render_template("index.html")
 
-  /* Custom checkbox styles */
-  .unit input[type="checkbox"] {
-    appearance: none;
-    -webkit-appearance: none;
-    width: 22px;
-    height: 22px;
-    border-radius: 6px;
-    border: 2px solid #8e44ad;
-    margin-right: 15px;
-    cursor: pointer;
-    position: relative;
-    transition: background-color 0.3s ease, border-color 0.3s ease;
-  }
+@app.route("/api/tasks", methods=["GET"])
+def get_tasks():
+    data = load_data()
+    today = str(date.today())
+    tasks = [t for t in data["tasks"] if not t.get("archived", False)]
+    return jsonify({"tasks": tasks, "today": today})
 
-  .unit input[type="checkbox"]:checked {
-    background: #9b59b6;
-    border-color: #9b59b6;
-  }
-
-  .unit input[type="checkbox"]:checked::after {
-    content: '✔';
-    color: white;
-    font-size: 16px;
-    position: absolute;
-    top: 1px;
-    left: 4px;
-  }
-
-  .progress-bar {
-    background: rgba(255, 255, 255, 0.25);
-    border-radius: 25px;
-    overflow: hidden;
-    margin: 20px 0 0;
-    height: 24px;
-    box-shadow: inset 0 2px 5px rgba(0,0,0,0.15);
-  }
-
-  .progress-bar-fill {
-    height: 100%;
-    background: linear-gradient(90deg, #8e44ad, #9b59b6);
-    width: 0%;
-    border-radius: 25px;
-    transition: width 0.5s ease;
-  }
-
-  button {
-    display: block;
-    margin: 40px auto 0;
-    padding: 14px 50px;
-    background: linear-gradient(135deg, #8e44ad, #9b59b6);
-    color: #fff;
-    font-weight: 600;
-    font-size: 18px;
-    border: none;
-    border-radius: 35px;
-    box-shadow: 0 5px 15px rgba(155, 89, 182, 0.5);
-    cursor: pointer;
-    transition: box-shadow 0.3s ease, background 0.3s ease;
-  }
-
-  button:hover {
-    background: linear-gradient(135deg, #9b59b6, #8e44ad);
-    box-shadow: 0 8px 25px rgba(155, 89, 182, 0.75);
-  }
-
-  /* Responsive tweaks */
-  @media (max-width: 600px) {
-    body {
-      padding: 20px 10px;
+@app.route("/api/tasks", methods=["POST"])
+def add_task():
+    data = load_data()
+    body = request.json
+    new_task = {
+        "id": data.get("next_id", 100),
+        "category": body.get("category", "Other"),
+        "title": body.get("title", "New Task"),
+        "start": body.get("start", "09:00"),
+        "end": body.get("end", "10:00"),
+        "color": body.get("color", CATEGORY_COLORS.get(body.get("category", "Other"), "#64748b")),
+        "done_dates": [],
+        "archived": False
     }
+    data["tasks"].append(new_task)
+    data["next_id"] = data.get("next_id", 100) + 1
+    save_data(data)
+    return jsonify({"task": new_task, "today": str(date.today())})
 
-    .subject {
-      padding: 20px;
-    }
+@app.route("/api/tasks/<int:task_id>", methods=["PUT"])
+def update_task(task_id):
+    data = load_data()
+    body = request.json
+    for t in data["tasks"]:
+        if t["id"] == task_id:
+            t["title"] = body.get("title", t["title"])
+            t["category"] = body.get("category", t["category"])
+            t["start"] = body.get("start", t["start"])
+            t["end"] = body.get("end", t["end"])
+            t["color"] = body.get("color", t["color"])
+            save_data(data)
+            return jsonify({"task": t, "today": str(date.today())})
+    return jsonify({"error": "Not found"}), 404
 
-    button {
-      width: 100%;
-      padding: 15px 0;
-      font-size: 20px;
-    }
-  }
-</style>
+@app.route("/api/tasks/<int:task_id>", methods=["DELETE"])
+def delete_task(task_id):
+    data = load_data()
+    data["tasks"] = [t for t in data["tasks"] if t["id"] != task_id]
+    save_data(data)
+    return jsonify({"success": True})
 
-</head>
+@app.route("/api/tasks/<int:task_id>/toggle", methods=["POST"])
+def toggle_task(task_id):
+    data = load_data()
+    today = str(date.today())
+    body = request.json or {}
+    target_date = body.get("date", today)
+    for t in data["tasks"]:
+        if t["id"] == task_id:
+            if target_date in t["done_dates"]:
+                t["done_dates"].remove(target_date)
+                done = False
+            else:
+                t["done_dates"].append(target_date)
+                done = True
+            save_data(data)
+            return jsonify({"done": done, "task": t})
+    return jsonify({"error": "Not found"}), 404
 
-<body>
-    <h1>Syllabus Tracker<br>
-    Time:-10.00 AM To 12.30 PM</h1>
+@app.route("/api/stats", methods=["GET"])
+def get_stats():
+    data = load_data()
+    today = str(date.today())
+    tasks = [t for t in data["tasks"] if not t.get("archived", False)]
+    total = len(tasks)
+    done_today = sum(1 for t in tasks if today in t.get("done_dates", []))
+    streak = 0
+    for t in tasks:
+        if t.get("done_dates"):
+            streak = max(streak, len(t["done_dates"]))
+    cats = {}
+    for t in tasks:
+        c = t["category"]
+        cats[c] = cats.get(c, 0) + 1
+    return jsonify({"total": total, "done_today": done_today, "streak": streak, "categories": cats})
 
-    <div class="subject" data-subject="DSBDA">
-        <h2>DSBDA [Monday
-26-05]
-</h2>
-        <div class="unit"><input type="checkbox" /> Unit 3: Big Data Analytics Life Cycle</div>
-        <div class="unit"><input type="checkbox" /> Unit 4: Predictive Big Data Analytics with Python</div>
-        <div class="unit"><input type="checkbox" /> Unit 5: Big Data Analytics and Model Evaluation</div>
-        <div class="unit"><input type="checkbox" /> Unit 6: Data Visualization and Hadoop</div>
-        <div class="progress-bar">
-            <div class="progress-bar-fill"></div>
-        </div>
-    </div>
+@app.route("/api/wallpaper", methods=["GET"])
+def get_wallpaper():
+    data = load_data()
+    return jsonify({"wallpaper": data.get("wallpaper", "gradient_1"), "custom": data.get("custom_wallpaper")})
 
-    <div class="subject" data-subject="WT">
-        <h2>WT [Wednesday
-28-05]</h2>
-        <div class="unit"><input type="checkbox" /> Unit 3: Java Servlets and XML</div>
-        <div class="unit"><input type="checkbox" /> Unit 4: JSP and Web Services</div>
-        <div class="unit"><input type="checkbox" /> Unit 5: Server Side Scripting Languages</div>
-        <div class="unit"><input type="checkbox" /> Unit 6: Ruby and Rails</div>
-        <div class="progress-bar">
-            <div class="progress-bar-fill"></div>
-        </div>
-    </div>
+@app.route("/api/wallpaper", methods=["POST"])
+def set_wallpaper():
+    data = load_data()
+    body = request.json
+    data["wallpaper"] = body.get("wallpaper", "gradient_1")
+    data["custom_wallpaper"] = body.get("custom_wallpaper", None)
+    save_data(data)
+    return jsonify({"success": True})
 
-    <div class="subject" data-subject="AI">
-        <h2>AI [Friday
-30-05]</h2>
-        <div class="unit"><input type="checkbox" /> Unit 3: Adversarial Search and Games</div>
-        <div class="unit"><input type="checkbox" /> Unit 4: Knowledge</div>
-        <div class="unit"><input type="checkbox" /> Unit 5: Reasoning</div>
-        <div class="unit"><input type="checkbox" /> Unit 6: Planning</div>
-        <div class="progress-bar">
-            <div class="progress-bar-fill"></div>
-        </div>
-    </div>
+@app.route("/api/categories", methods=["GET"])
+def get_categories():
+    return jsonify({"categories": CATEGORIES, "colors": CATEGORY_COLORS})
 
-    <div class="subject" data-subject="CC">
-        <h2>CC [Monday
-02-06]</h2>
-        <div class="unit"><input type="checkbox" /> Unit 3: Virtualization in Cloud Computing</div>
-        <div class="unit"><input type="checkbox" /> Unit 4: Cloud Platforms and Cloud Applications</div>
-        <div class="unit"><input type="checkbox" /> Unit 5: Security in Cloud Computing</div>
-        <div class="unit"><input type="checkbox" /> Unit 6: Advanced Techniques in Cloud Computing</div>
-        <div class="progress-bar">
-            <div class="progress-bar-fill"></div>
-        </div>
-    </div>
-    <button id="saveButton">Save Progress</button>
-
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.11.1/firebase-app.js";
-        import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.11.1/firebase-firestore.js";
-
-        const firebaseConfig = {
-            apiKey: "AIzaSyASuEsQB4qs57gpnqol9IN0Vzl7mlTepUo",
-            authDomain: "syllabus-tracker-e8ba0.firebaseapp.com",
-            projectId: "syllabus-tracker-e8ba0",
-            storageBucket: "syllabus-tracker-e8ba0.appspot.com",
-            messagingSenderId: "898810875690",
-            appId: "1:898810875690:web:1058fa575311eb1d4dd853",
-            measurementId: "G-ZT2F2SVFHZ"
-        };
-
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
-        const userDoc = doc(db, "users", "demoUser");
-
-        function updateProgress(subjectEl) {
-            const checkboxes = subjectEl.querySelectorAll("input[type='checkbox']");
-            const fill = subjectEl.querySelector(".progress-bar-fill");
-            let checkedCount = 0;
-            checkboxes.forEach(cb => { if (cb.checked) checkedCount++; });
-            const percent = (checkedCount / checkboxes.length) * 100;
-            fill.style.width = percent + "%";
-        }
-
-        function collectProgress() {
-            const data = {};
-            document.querySelectorAll(".subject").forEach(sub => {
-                const name = sub.dataset.subject;
-                const checkboxes = sub.querySelectorAll("input[type='checkbox']");
-                data[name] = [];
-                checkboxes.forEach(cb => data[name].push(cb.checked));
-            });
-            return data;
-        }
-
-        function applyProgress(data) {
-            document.querySelectorAll(".subject").forEach(sub => {
-                const name = sub.dataset.subject;
-                const checkboxes = sub.querySelectorAll("input[type='checkbox']");
-                if (data[name]) {
-                    data[name].forEach((val, idx) => {
-                        if (checkboxes[idx]) checkboxes[idx].checked = val;
-                    });
-                }
-                updateProgress(sub);
-            });
-        }
-
-        async function saveProgressToFirebase() {
-            const data = collectProgress();
-            await setDoc(userDoc, data);
-            alert("Saved successfully!");
-        }
-
-        async function loadProgressFromFirebase() {
-            const snap = await getDoc(userDoc);
-            if (snap.exists()) {
-                applyProgress(snap.data());
-            }
-        }
-
-        document.querySelectorAll("input[type='checkbox']").forEach(cb => {
-            cb.addEventListener("change", () => {
-                const sub = cb.closest(".subject");
-                updateProgress(sub);
-            });
-        });
-
-        document.getElementById("saveButton").addEventListener("click", () => {
-            saveProgressToFirebase().catch(err => alert("Error saving: " + err));
-        });
-
-        loadProgressFromFirebase().catch(console.error);
-    </script>
-</body>
-
-</html>
+if __name__ == "__main__":
+    app.run(debug=True, port=5050)
