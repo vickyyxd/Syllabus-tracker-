@@ -105,24 +105,6 @@ The application will start at:
 http://localhost:5050
 ```
 
-## 📡 API Endpoints
-
-### Tasks
-
-| Method | Endpoint                 | Description            |
-| ------ | ------------------------ | ---------------------- |
-| GET    | `/api/tasks`             | Get all active tasks   |
-| POST   | `/api/tasks`             | Create a new task      |
-| PUT    | `/api/tasks/<id>`        | Update a task          |
-| DELETE | `/api/tasks/<id>`        | Delete a task          |
-| POST   | `/api/tasks/<id>/toggle` | Toggle task completion |
-
-### Statistics
-
-| Method | Endpoint     |
-| ------ | ------------ |
-| GET    | `/api/stats` |
-
 Returns:
 
 * Total Tasks
@@ -168,7 +150,6 @@ Users can:
 * Dark Mode
 * Notifications & Reminders
 * Weekly & Monthly Analytics
-* Mobile App Version
 * Calendar View
 * Export Data Feature
 
